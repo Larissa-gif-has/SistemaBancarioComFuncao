@@ -1,108 +1,114 @@
-from datetime import datetime
-import random
-
-menu = """\033[0;32m[ 1 ] - DEPOSITAR
-[ 2 ] - SACAR 
-[ 3 ] - EXTRATO 
-[ 4 ] - NOVO USÚARIO
-[ 5 ] - FILTRAR USÚARIO
-[ 6 ] - EXCLUIR CONTA
-[ 7 ] - SAIR\033[m
+def menu():
+    while True:
+        opcoes = """1. DEPOSITAR
+2. SACAR
+3. EXTRATO
+4. CRIAR USUÁRIO
+5. CRIAR CONTA
+6. FILTRAR USUÁRIO
+7. LISTAR CONTA
+8. SAIR DO SISTEMA
 >>> """
+        return opcoes
 
 
-def depositar(valor, saldo, extrato):
-    if valor > 0:
-        saldo += valor
-        extrato += valor
-        print(f'\033[0;34mDeposito no valor de R${valor:.2f} Efetuado com sucesso\033[m')
+def depositar(saldo, valor, extrato, /):
+    from datetime import datetime
+    if valor <= 0:
+        print('\033[0;31mValor de depósito invalido! Tente novamente\033[m')
     else:
-        print(' \033[0;31mValor invalido. Tente novamente\033[m')
+        data_hora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+        saldo += valor
+        extrato += f"\n{'Depósito:':<10} \033[0;35mR$ {valor:>8.2f}\033[m - {data_hora}\n"
+        print(f'Depósito no valor de R$\033[0;34m{valor:.2f}\033[m realizado com sucesso.')
     return saldo, extrato
 
 
-def sacar(saldo, valor, saque, extrato, limite, numero_saques, limite_saques):
-    if valor == 500:
-        numero_saques += 1
-
-    excedeu_saldo = valor > saldo
-    excedeu_limite = valor > limite
-    excedeu_saques = numero_saques > limite_saques
-    if excedeu_saldo:
+def sacar(*, saldo, valor, extrato, limite, numero_saques, limite_saques):
+    from datetime import datetime
+    if valor <= 0:
+        print('\033[0;31mValor inválido! Tente novamente\033[m')
+    elif valor > saldo:
         print('\033[0;31mOperação falhou.Voce não tem saldo suficiente\033[m')
-    elif excedeu_limite:
+    elif valor > limite:
         print('\033[0;31mOperação falhou. O valor do saque excede o limite\033[m')
-    elif excedeu_saques:
+    elif numero_saques >= limite_saques:
         print('\033[0;31mOperação falhou. Número máximo de saques excedido\033[m')
-    elif valor > 0:
+    else:
+        if valor == 500:
+            numero_saques += 1
         saldo -= valor
-        saque += valor
-        print(f'\033[0;34mSaque no valor de R${valor:.2f} Efetuado com sucesso\033[m ')
-    else:
-        print(' \033[0;31mValor invalido. Tente novamente\033[m')
-    return saldo, extrato, saque, numero_saques
+        data_hora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+        extrato += f"\n{'Saque:':<10} \033[0;35mR$ {valor:>8.2f}\033[m - {data_hora}\n"
+        print(f'Saque no valor de R$\033[0;34m{valor:.2f}\033[m realizado com sucesso!')
+    return saldo, extrato, numero_saques
 
 
-def extrato_bancario(saldo, extrato=0, saque=0):
+def exibir_extrato(saldo, /, *, extrato):
+    print('-' * 40)
     print('\033[0;34mEXTRATO DEPÓSITO BANCÁRIO\033[m ')
-    print(f'DEPÓSITO: R${extrato:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.'))
-    print(f'VALOR TOTAL DE SAQUE: R${saque:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.'))
-    print(f'SALDO ATUAL: R${saldo:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.'))
-    hoje = datetime.now()
-    horario_formatado = hoje.strftime("%d/%m/%Y %H:%M:%S")
-    print(f'HORÁRIO: {horario_formatado}')
+    print(f'TRANSAÇÕES: {extrato}')
+    print(f'SALDO ATUAL: {saldo:>8.2f}')
+    print('-' * 40)
 
 
-def novo_usuario():
-    cpf = input('Informe seu CPF (xxx.xxx.xxx-xx):')
-    for usuario in usuarios:
-        if usuario['cpf'] == cpf:
-            cpf_existe = True
-            print('\033[0;31mCPF já cadastrado! Tente novamente\033[m')
-            break
+usuarios = {}
+def criar_usuario(usuarios):
+    print('-' * 51)
+    consultar = input('Informe o CPF para consultar a conta:')
+    print('-' * 51)
+    if consultar in usuarios:
+        print("\033[0;31mEste CPF já está cadastrado!\033[m")
+        return usuarios
     else:
+        cpf = input('Informe seu CPF (somente números): ')
         nome = input('Irforme o nome completo:')
         data_nascimento = input('Informe a data de nascimento (dd-mm-aaaa):')
+        usuarios[cpf] = {"nome": nome,
+                         "data de nascimento": data_nascimento,
+                         "contas": []} 
+        print(f'Usuário do CPF:\033[0;34m{cpf}\033[m criado com sucesso.')
+    return usuarios
+
+
+def filtrar_usuario(cpf, usuarios):
+    for chave, valor in usuarios.items():
+        if chave == cpf:
+            return valor  #retorna o valor caso encontre o usuário
+    print("\033[0;31mCPF não encontrado! Tente novamente.\033[m")
+    return None
+
+
+numero_conta = []
+def criar_conta(agencia, numero_conta, usuarios):
+    import random
+    cpf = input('Qual o CPF para gerar a conta? ')
+    usuario = filtrar_usuario(cpf, usuarios)
+    if usuario:
         while True:
-            numero_conta = str(random.randint(100000, 999999))
-            if numero_conta not in contas_geradas:
-                contas_geradas.append(numero_conta)
+            contas_geradas = str(random.randint(100000, 999999))
+            cinco_digitos = contas_geradas[:5]
+            digito_final = contas_geradas[5]
+            conta = f'{cinco_digitos}-{digito_final}'
+            if conta not in numero_conta:
                 break
-        cinco_digitos = numero_conta[:5]
-        digito_final = numero_conta[5]
-        conta = f'{cinco_digitos}-{digito_final}'
-        usuarios.append({'nome': nome,
-                         'cpf': cpf,
-                         'agencia': agencia,
-                         'conta': conta})
-        print('\033[0;35mUsúario cadastrado com sucesso\033[m')
-        print(f'Conta gerada: {conta}')
-
-def filtrar_usuario():
-    consultar = input('Informe o CPF (xxx.xxx.xxx-xx) para consulta:')
-    encontrado = 0
-    for consult in usuarios:
-        if consult['cpf'] == consultar:
-            encontrado = True
-            print(f'Nome: {consult["nome"]}')
-            print(f'CPF: {consult["cpf"]}')
-            print(f'Agencia: {consult["agencia"]}')
-            print(f'Conta: {consult["conta"]}')
-    if not encontrado:
-        print('\033[0;31mCPF não existe ou foi excluído\033[m')
+        nova_conta = {"conta": conta, "agencia": agencia}
+        usuarios[cpf]["contas"].append(nova_conta)
+        numero_conta.append(nova_conta)
+        print(f'Conta: \033[0;34m{nova_conta["conta"]}\033[m '
+              f'Agencia: \033[0;34m{nova_conta["agencia"]}\033[m do CPF: \033[0;35m{cpf}\033[m Criada com sucesso!')
+    return usuarios
 
 
-def remover_usuario():
-    remover = input('Informe o CPF (xxx.xxx.xxx-xx)'
-                    'ou número da conta para cancelamento:')
-    encontrado = 0
-    for remove in usuarios:
-        if remove['cpf'] == remover or remove['conta'] == remover:
-            encontrado = True
-            usuarios.remove(remove)
-            print(f'Conta com o {remover} excluído com sucesso ')
-    if not encontrado:
-        print('\033[0;31mCPF não existe ou foi excluído\033[m')
+def listar_usuarios(usuarios):
+    print('LISTAGEM DE CONTAS:')
+    for cpf, dados, in usuarios.items():#percorre todos o usuarios
+        for conta in dados["contas"]:
+            print(f'CPF: \033[0;35m{cpf:<15}\033[m | '
+                  f'Nome: \033[0;35m{dados["nome"]:<20}\033[m | '
+                  f'Conta: \033[0;35m{conta["conta"]:<10}\033[m | '
+                  f'Agência: \033[0;35m{conta["agencia"]:<5}\033[m')
+            print()
 
 
 #PROGRAMA PRINCIPAL
@@ -111,37 +117,34 @@ limite_saques = 3
 numero_saques = 0
 saldo = 0
 saque = 0
-extrato = 0
-usuarios = []
-conta = []
-contas_geradas = []
+extrato = ""
 agencia = '0001'
 while True:
-
     print('-' * 51)
-    opcao = int(input(menu))
+    opcao = float(input(menu()))
     print('-' * 51)
     if opcao == 1:
-        valor = float(input('Qual o valor do depósito?'))
-        saldo, extrato = depositar(valor, saldo, extrato)
+        valor = int(input('Qual o valor do depósito?'))
+        saldo, extrato = depositar(saldo, valor, extrato)
     elif opcao == 2:
-        valor = float(input('Qual o valor do saque?'))
-        saldo, extrato, saque, numero_saques = sacar(
-            saldo,
-            valor,
-            saque,
-            extrato,
-            limite,
-            numero_saques,
-            limite_saques)
+        valor = int(input('Qual o valor de saque?'))
+        saldo, extrato, numero_saques = sacar(
+            saldo=saldo,
+            valor=valor,
+            extrato=extrato,
+            limite=limite,
+            numero_saques=numero_saques,
+            limite_saques=limite_saques)
     elif opcao == 3:
-        extrato_bancario(saldo, extrato, saque)
+        exibir_extrato(saldo, extrato=extrato)
     elif opcao == 4:
-        novo_usuario()
+        usuarios = criar_usuario(usuarios)
     elif opcao == 5:
-        filtrar_usuario()
+        usuarios = criar_conta(agencia, numero_conta, usuarios)
     elif opcao == 6:
-        remover_usuario()
+        cpf = input('Qual o CPF para gerar a conta?')
+        consult = filtrar_usuario(cpf, usuarios)
     elif opcao == 7:
-        print('SESSÃO FINALIZADA...')
-        break
+        listar_usuarios(usuarios)
+    elif opcao == 8:
+        print('Encerrando sessão...')
